@@ -1,0 +1,33 @@
+{
+    "name": "bluetree-service/api-core",
+    "description": "Minimal JSON API microframework: modules, routing, config cache, console",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Michał Adamiak",
+            "email": "chajr@bluetree.pl"
+        }
+    ],
+    "require": {
+        "php": "^8.5",
+        "ext-redis": "*",
+        "composer-runtime-api": "^2.0",
+        "bluetree-service/cache": "^0.5",
+        "bluetree-service/container": "^0.3",
+        "bluetree-service/event": "^0.10.1",
+        "bluetree-service/filesystem": "^0.4",
+        "bluetree-service/register": "^0.5",
+        "bluetree-service/simple-log": "^0.10",
+        "bluetree-service/symfony-console-style": "^0.7",
+        "doctrine/dbal": "^4.4",
+        "symfony/console": "^8.0",
+        "symfony/http-foundation": "^8.0",
+        "symfony/validator": "^8.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Bluetree\\Api\\Core\\": "src/"
+        }
+    }
+}
