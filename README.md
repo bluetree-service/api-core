@@ -1,26 +1,25 @@
 # api-core
 
-Mikroframework JSON API wspólny dla `bluetree` i `gry` (`Bluetree\Api\Core`).
+JSON API microframework shared by `bluetree` and `gry` (`Bluetree\Api\Core`).
 
 ```bash
 composer require bluetree-service/api-core
 ```
 
-## Czego oczekuje od aplikacji
+## What it expects from the application
 
-Ścieżki liczone są od katalogu projektu głównego (`Composer\InstalledVersions`), nie od paczki:
+Paths are resolved from the root project (`Composer\InstalledVersions`), not from the package:
 
-- `src/config/{main,routes,connections,events}.json` — konfiguracja bazowa,
-- `modules/<Nazwa>/config/*.json` — konfiguracja modułów,
-- `modules/<Nazwa>/Console/*Command.php` — komendy konsoli,
-- zmienne środowiskowe `DB_USER`, `DB_PASSWORD`.
+- `src/config/{main,routes,connections,events}.json` — base configuration,
+- `modules/<Name>/config/*.json` — module configuration,
+- `modules/<Name>/Console/*Command.php` — console commands,
+- environment variables `DB_USER`, `DB_PASSWORD`.
 
-Moduł, który bez jakiejś zmiennej środowiskowej nie działa, deklaruje ją w
-swoim `main.json` — `app:health` sprawdzi ją tylko wtedy, gdy moduł jest
-załadowany:
+A module that cannot work without some environment variable declares it in
+its own `main.json` — `app:health` checks it only when the module is loaded:
 
 ```json
 { "required_env": ["KSEF_TOKEN"] }
 ```
 
-Punkty wejścia (`src/pub/entrypoint.php`, `bin/console`) zostają w aplikacji.
+Entry points (`src/pub/entrypoint.php`, `bin/console`) stay in the application.
