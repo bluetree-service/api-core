@@ -132,15 +132,23 @@ class ApiCore
                 ]
             );
         } catch (\Throwable $exception) {
-            $response = new ErrorResponse();
-            $message['error'] = $exception->getMessage();
+            // Same rule as handleError(), applied before there is a logger or a
+            // resolved config to ask: an unreachable cache names its host, and
+            // that is not for whoever sent the request - the healthcheck
+            // included. The container log gets the whole thing under the id.
+            $errorId = \bin2hex(\random_bytes(4));
+            $message = ['error_id' => $errorId];
 
-            if ($this->config['main']['debug'] === true) {
+            \error_log("[$errorId] {$exception->getMessage()} in {$exception->getFile()}:{$exception->getLine()}");
+
+            if (self::envFlag('APP_DEBUG')) {
+                $message['error'] = $exception->getMessage();
                 $message['file'] = $exception->getFile();
                 $message['line'] = $exception->getLine();
                 $message['trace'] = $exception->getTraceAsString();
             }
 
+            $response = new ErrorResponse();
             $response->responseInternalError(
                 'Failed initialize API',
                 $message

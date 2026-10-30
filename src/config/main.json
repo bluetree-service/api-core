@@ -1,0 +1,30 @@
+{
+    "main": {
+        "cache": {
+            "host": "redis",
+            "port": 6379,
+            "database": 2,
+            "expires": 604800
+        },
+        "log": {
+            "log_path": "./log",
+            "level": "notice",
+            "storage": "SimpleLog\\Storage\\File",
+            "message": "SimpleLog\\Message\\DefaultMessage"
+        },
+        "debug": false,
+        "show_exceptions_messages": false,
+        "main_cache_blocks": [
+            "config"
+        ],
+        "auth": {
+            "auth_class": "Bluetree\\Mod\\Hello\\HelloAuth",
+            "auth_method": "checkAuth"
+        },
+        "cors": {
+            "allowed_origins": [
+                "http://localhost:5173"
+            ]
+        }
+    }
+}

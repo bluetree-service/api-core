@@ -1,0 +1,10 @@
+{
+    "routes": {
+        "/hello": {
+            "method": ["GET"],
+            "controller": "Bluetree\\Mod\\Hello\\Controller\\HelloController",
+            "action": "index",
+            "restricted": false
+        }
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "connections": {
+        "database": {
+            "default": {
+                "driver": "maria_db",
+                "host": "maria_db",
+                "port": 3306,
+                "database": "app"
+            }
+        }
+    }
+}

@@ -1,0 +1,11 @@
+{
+    "routes": {},
+    "methods": {
+        "OPTIONS": {
+            "name": "OPTIONS",
+            "description": "Override OPTIONS method, when no route is found for it, to return 204 status code with CORS headers.",
+            "controller": "Bluetree\\Api\\Core\\Controller\\OptionsController",
+            "action": "index"
+        }
+    }
+}

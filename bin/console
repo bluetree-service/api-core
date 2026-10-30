@@ -1,0 +1,44 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// Installed as a dependency this runs through Composer's vendor/bin proxy,
+// which says where the application's autoloader is; in the package's own
+// checkout there is no proxy and vendor/ sits next to bin/.
+require_once $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
+
+use Symfony\Component\Console\Application;
+use Bluetree\Api\Core\Console\Commands;
+use Bluetree\Api\Core\Console\TimestampedOutput;
+
+\set_error_handler(function (int $severity, string $message, string $file, int $line): bool {
+    throw new \ErrorException($message, 0, $severity, $file, $line);
+});
+\register_shutdown_function(function() {
+    $error = \error_get_last();
+
+    if ($error !== null) {
+        $fatalTypes = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR];
+
+        if (\in_array($error['type'], $fatalTypes, true)) {
+            \http_response_code(500);
+
+            echo \json_encode([
+                'status' => 500,
+                'message' => 'Fatal error',
+                'details' => [
+                    'type' => $error['type'],
+                    'message' => $error['message'],
+                    'file' => $error['file'],
+                    'line' => $error['line'],
+                ],
+            ], JSON_THROW_ON_ERROR);
+        }
+    }
+});
+
+$commands = new Commands();
+$application = new Application();
+$application->addCommands($commands->toArray());
+$application->run(output: new TimestampedOutput());
