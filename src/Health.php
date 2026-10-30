@@ -8,6 +8,9 @@ use BlueCache\Cache as BlueCache;
 use BlueCache\Storage\Redis;
 use BlueRegister\Register;
 use Bluetree\Api\Core\Helpers\Db;
+use Bluetree\Api\Core\Response\BaseResponse;
+use Bluetree\Api\Core\Response\ErrorResponse;
+use Bluetree\Api\Core\Response\SuccessResponse;
 
 /**
  * Answers whether this installation can reach what it depends on.
@@ -17,9 +20,9 @@ use Bluetree\Api\Core\Helpers\Db;
  * made it into the container, a database that was never migrated, a cache on
  * the wrong host.
  *
- * Only collects answers; `app:health` prints them in full and
- * pub/healthcheck.php reduces them to one status per check, since hosts and
- * exception messages are not something to hand to whoever asks over HTTP.
+ * Only collects answers; `app:health` prints them in full and respond()
+ * reduces them to one status per check, since hosts and exception messages are
+ * not something to hand to whoever asks over HTTP.
  */
 class Health
 {
@@ -67,6 +70,46 @@ class Health
         $this->checkModules();
 
         return $this->results;
+    }
+
+    /**
+     * The whole HTTP healthcheck, so an application's pub/healthcheck.php is
+     * the autoloader and this call.
+     *
+     * @throws \JsonException
+     */
+    public static function respond(): void
+    {
+        // A cache that does not answer stops ApiCore itself, which then answers
+        // 500 on its own; everything past this point has the configuration.
+        $core = new ApiCore();
+        $core->run();
+
+        self::response((new self($core->returnConfigs()))->run())->render();
+    }
+
+    /**
+     * 200 or 503 with one status per check and nothing else: hosts, paths and
+     * exception messages stay with `app:health`.
+     */
+    public static function response(array $results): BaseResponse
+    {
+        if (self::failed($results)) {
+            $response = new ErrorResponse();
+            $response->genericResponse(
+                503,
+                ErrorResponse::STATUS_FAILED,
+                'Something this installation depends on is not reachable.',
+                self::summary($results)
+            );
+
+            return $response;
+        }
+
+        $response = new SuccessResponse();
+        $response->genericResponse(200, SuccessResponse::STATUS_SUCCESS, 'Everything answered.', self::summary($results));
+
+        return $response;
     }
 
     public static function failed(array $results): bool

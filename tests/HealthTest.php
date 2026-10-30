@@ -178,4 +178,21 @@ class HealthTest extends TestCase
         self::assertTrue(Health::failed($results));
         self::assertFalse(Health::failed(\array_slice($results, 3)));
     }
+
+    public function testResponseIs503WithStatusesOnlyWhenAnythingFailed(): void
+    {
+        $failed = [['check' => 'cache', 'label' => 'Cache (redis:6379)', 'status' => Health::FAIL, 'message' => 'redis did not answer']];
+        $passed = [['check' => 'cache', 'label' => 'Cache (redis:6379)', 'status' => Health::OK, 'message' => 'redis answered']];
+
+        $scheme = fn (object $response): array => (fn (): array => $this->scheme)->call($response);
+
+        self::assertSame(
+            ['code' => 503, 'status' => 'failed', 'message' => 'Something this installation depends on is not reachable.', 'details' => ['cache' => Health::FAIL]],
+            $scheme(Health::response($failed))
+        );
+        self::assertSame(
+            ['code' => 200, 'status' => 'success', 'message' => 'Everything answered.', 'details' => ['cache' => Health::OK]],
+            $scheme(Health::response($passed))
+        );
+    }
 }

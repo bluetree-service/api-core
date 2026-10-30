@@ -34,8 +34,10 @@ class Modules
                 if ($this->config['main']['debug'] === true) {
                     $this->logger->debug("Executed main class for module: $moduleName");
                 }
-            } else {
-                $this->logger->warning("Main class for module don't exists: $mainClassPath");
+            } elseif ($this->config['main']['debug'] === true) {
+                // Main is optional, and no module has one; a warning here was
+                // one log line per module on every request.
+                $this->logger->debug("Main class for module don't exists: $mainClassPath");
             }
         }
     }

@@ -38,27 +38,42 @@ php vendor/bin/console app:health
 
 ## HTTP entry points
 
-`pub/entrypoint.php` handles every API request, `pub/healthcheck.php` answers
-`200` or `503` with one status per check (`environment`, `cache`,
-`database:<name>`, `log`, `modules`) — no hosts or error messages; those are
-in `app:health`. Point php-fpm at them in the vendor directory:
+The front controllers belong to the application, not to `vendor/`: copy
+`pub/` from this package to `src/pub/` once and fix the autoloader path. Each
+is a few lines, all the logic stays in the package, so they never need
+updating:
+
+```php
+// src/pub/entrypoint.php
+require_once __DIR__ . '/../../vendor/autoload.php';
+
+$core = new Bluetree\Api\Core\ApiCore();
+$core->run();
+$core->handleRequest();
+```
+
+```php
+// src/pub/healthcheck.php
+require_once __DIR__ . '/../../vendor/autoload.php';
+
+Bluetree\Api\Core\Health::respond();
+```
+
+The healthcheck answers `200` or `503` with one status per check
+(`environment`, `cache`, `database:<name>`, `log`, `modules`) — no hosts or
+error messages; those are in `app:health`. It opens every configured database
+on each call, so keep it off the public internet:
 
 ```nginx
 location = /healthcheck {
-    fastcgi_param SCRIPT_FILENAME /var/www/html/vendor/bluetree-service/api-core/pub/healthcheck.php;
-    include fastcgi_params;
-    fastcgi_pass api:9000;
-}
-
-location / {
-    fastcgi_param SCRIPT_FILENAME /var/www/html/vendor/bluetree-service/api-core/pub/entrypoint.php;
+    allow 127.0.0.1;
+    allow 172.16.0.0/12;
+    deny all;
+    fastcgi_param SCRIPT_FILENAME /var/www/html/src/pub/healthcheck.php;
     include fastcgi_params;
     fastcgi_pass api:9000;
 }
 ```
-
-The healthcheck opens every configured database on each call, so keep it on
-the internal network rather than public.
 
 ## Development
 
