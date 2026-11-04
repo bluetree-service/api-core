@@ -21,7 +21,7 @@ class Json
     /**
      * @param Request $request
      * @return array
-     * @throws \JsonException
+     * @throws InvalidJsonException
      */
     public static function jsonRequest(Request $request): array
     {
@@ -31,7 +31,13 @@ class Json
             return [];
         }
 
-        return \json_decode($data, true, 512, JSON_THROW_ON_ERROR);
+        $decoded = \json_decode($data, true);
+
+        if (!\is_array($decoded)) {
+            throw new InvalidJsonException('The request body is not a JSON object or array');
+        }
+
+        return $decoded;
     }
 
     /**

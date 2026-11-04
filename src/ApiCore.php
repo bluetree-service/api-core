@@ -9,6 +9,7 @@ use Composer\InstalledVersions;
 use BlueRegister\Register;
 use BlueCache\Cache;
 use Bluetree\Api\Core\Helpers\{
+    InvalidJsonException,
     Json,
     Auth,
 };
@@ -96,17 +97,7 @@ class ApiCore
                 [$this->logConfig()]
             );
 
-            $this->request = $this->register->factory(
-                Request::class,
-                [
-                    $_GET,
-                    $_POST,
-                    [],
-                    $_COOKIE,
-                    $_FILES,
-                    $_SERVER
-                ]
-            );
+            $this->request = $this->createRequest();
 
             $this->auth = $this->register->factory(
                 $this->config['main']['auth']['auth_class'],
@@ -155,6 +146,26 @@ class ApiCore
             );
             $response->render();
         }
+    }
+
+    protected function createRequest(): Request
+    {
+        // Symfony honours X-HTTP-Method-Override on any POST by default. No route
+        // relies on it, and it lets a request be something other than what every
+        // proxy in front of this one saw.
+        Request::setAllowedHttpMethodOverride([]);
+
+        return $this->register->factory(
+            Request::class,
+            [
+                $_GET,
+                $_POST,
+                [],
+                $_COOKIE,
+                $_FILES,
+                $_SERVER
+            ]
+        );
     }
 
     /**
@@ -252,6 +263,8 @@ class ApiCore
     public function handleRequest(): void
     {
         try {
+            $this->refuseForeignWrite();
+
             $path = \parse_url($this->request->getRequestUri(), PHP_URL_PATH);
             $matchedRoute = null;
 
@@ -292,14 +305,48 @@ class ApiCore
             $response = new ErrorResponse();
             $response->responseNotFound('Route not found');
             $response->render();
+        } catch (InvalidJsonException) {
+            // The client's mistake, so nothing to log: an alarm anyone can raise
+            // by posting garbage is an alarm nobody reads.
+            $response = new ErrorResponse();
+            $response->genericResponse(400, ErrorResponse::STATUS_BAD_REQUEST, 'Malformed JSON body');
+            $response->render();
         } catch (\Throwable $exception) {
             $this->handleError($exception, 'Failed to handle Request');
         }
     }
 
+    /**
+     * SameSite=Lax stops a write from another site, but a sibling subdomain is
+     * the same site: a page on one sends the session cookie along, and a
+     * text/plain body needs no preflight. CORS only hides the answer from that
+     * page, by which time the write has happened.
+     *
+     * Every browser names the origin of a write, and no page can forge it.
+     * Clients without a browser send none, and carry no ambient cookie to abuse.
+     * A front end on the same host as the api needs no entry on the allow list.
+     */
+    protected function refuseForeignWrite(): void
+    {
+        $origin = $this->request->headers->get('Origin');
+
+        if ($origin === null
+            || $this->request->isMethodSafe()
+            || BaseResponse::isAllowedOrigin($origin)
+            || \preg_replace('#^https?://#', '', $origin) === $this->request->headers->get('Host')
+        ) {
+            return;
+        }
+
+        $response = new ErrorResponse();
+        $response->responseForbidden('Origin not allowed');
+        $response->render();
+    }
+
     protected function auth(array $matchedRoute): void
     {
-        $restricted = $matchedRoute['restricted'] ?? false;
+        // A route that forgot to say must not be the one that turns out public.
+        $restricted = $matchedRoute['restricted'] ?? true;
 
         if ($restricted) {
             $auth = $this->auth->checkAuth($matchedRoute);
@@ -332,7 +379,9 @@ class ApiCore
         $handler = $this->config['methods'][$method] ?? null;
 
         if ($handler) {
-            return $handler;
+            // These answer for any path, so there is no route to protect, and a
+            // browser's preflight carries no credentials to pass a check with.
+            return $handler + ['restricted' => false];
         }
 
         return null;
@@ -452,6 +501,12 @@ class ApiCore
 
     protected function captureWarnings(): void
     {
+        // The images run without a php.ini, and PHP's built-in defaults print
+        // errors into the response and keep function arguments in every trace -
+        // a password among them, when a login fails on a database that is down.
+        \ini_set('display_errors', '0');
+        \ini_set('zend.exception_ignore_args', '1');
+
         \set_error_handler(function (int $severity, string $message, string $file, int $line): bool {
             throw new \ErrorException($message, 0, $severity, $file, $line);
         });
@@ -462,18 +517,21 @@ class ApiCore
                 $fatalTypes = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR];
 
                 if (\in_array($error['type'], $fatalTypes, true)) {
-                    \http_response_code(500);
+                    // Same rule as handleError().
+                    $errorId = \bin2hex(\random_bytes(4));
+                    $details = ['error_id' => $errorId];
 
-                    echo \json_encode([
-                        'status' => 500,
-                        'message' => 'Fatal error',
-                        'details' => [
-                            'type' => $error['type'],
-                            'message' => $error['message'],
-                            'file' => $error['file'],
-                            'line' => $error['line'],
-                        ],
-                    ], JSON_THROW_ON_ERROR);
+                    \error_log("[$errorId] {$error['message']} in {$error['file']}:{$error['line']}");
+
+                    if (self::envFlag('APP_DEBUG')) {
+                        $details['error'] = $error['message'];
+                        $details['file'] = $error['file'];
+                        $details['line'] = $error['line'];
+                    }
+
+                    $response = new ErrorResponse();
+                    $response->responseInternalError('Fatal error', $details);
+                    $response->render();
                 }
             }
         });

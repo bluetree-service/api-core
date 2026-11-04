@@ -53,6 +53,11 @@ abstract class BaseResponse
     public function render(): void
     {
         $this->sendCorsHeaders();
+        // Answers depend on who is asking, so nothing between here and the
+        // client may keep one; and a browser must not read one as anything else.
+        header('Cache-Control: no-store');
+        header('X-Content-Type-Options: nosniff');
+        header_remove('X-Powered-By');
         header('Content-Type: application/json', true, $this->scheme['code']);
         echo \json_encode($this->scheme, JSON_THROW_ON_ERROR);
         exit;
@@ -78,10 +83,11 @@ abstract class BaseResponse
     {
         $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
+        header('Vary: Origin');
+
         if (self::isAllowedOrigin($origin)) {
             header('Access-Control-Allow-Origin: ' . $origin);
             header('Access-Control-Allow-Credentials: true');
-            header('Vary: Origin');
         }
 
         header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');

@@ -22,7 +22,7 @@
         "bluetree-service/symfony-console-style": "^0.7",
         "doctrine/dbal": "^4.4",
         "symfony/console": "^8.0",
-        "symfony/http-foundation": "^8.0",
+        "symfony/http-foundation": "^8.1.7",
         "symfony/validator": "^8.1"
     },
     "require-dev": {

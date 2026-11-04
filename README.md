@@ -27,6 +27,18 @@ its own `main.json` — `app:health` checks it only when the module is loaded:
 { "required_env": ["KSEF_TOKEN"] }
 ```
 
+## What it enforces
+
+- A route without `"restricted"` is restricted; say `false` for a public one.
+- A write (anything but `GET`, `HEAD`, `OPTIONS`) whose `Origin` is neither in
+  `main.cors.allowed_origins` nor the host the request came to gets `403`.
+  Clients that send no `Origin` are not affected.
+- A body that is not a JSON object or array gets `400`, read through
+  `Helpers\Json`, unless the controller catches the exception itself.
+- `X-HTTP-Method-Override` is ignored.
+- Errors never reach the response unless `APP_DEBUG` is set; each failure carries
+  an `error_id` to find it by in the log. Traces hold no function arguments.
+
 ## Console
 
 Installed as `vendor/bin/console`; it finds the core commands (`app:health`,

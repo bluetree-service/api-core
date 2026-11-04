@@ -116,7 +116,9 @@ class Config extends Command
                 if ($value === false) {
                     $this->blueStyle->errorMessage("Environment variable '$envVariable' is not set.");
                 } else {
-                    $this->blueStyle->writeln("$envVariable: <info>$value</info>");
+                    // Whether it is there is the question. The value would end up
+                    // in terminal scrollback and CI logs, and one of them is a password.
+                    $this->blueStyle->writeln("$envVariable: <info>is set</info>");
                 }
             }
 
